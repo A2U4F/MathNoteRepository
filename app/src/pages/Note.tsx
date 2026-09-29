@@ -156,12 +156,9 @@ export default function Note() {
       </div>
 
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-5 py-10 md:px-8 lg:grid-cols-[minmax(180px,21.5%)_minmax(0,1fr)_minmax(180px,22%)] lg:gap-12 lg:py-14">
-        {/* left: same-subject notes + meta */}
-        <div className="hidden lg:block">
-          <div className="sticky top-24 space-y-8">
-            {relatedNotes}
-            {marginalia}
-          </div>
+        {/* left: outline */}
+        <div className="hidden lg:block lg:pt-2">
+          <div className="lg:sticky lg:top-24">{toc}</div>
         </div>
 
         {/* center: article */}
@@ -225,9 +222,12 @@ export default function Note() {
           <div className="mt-12 lg:hidden">{relatedNotes}</div>
         </article>
 
-        {/* right: outline */}
-        <div className="hidden lg:block lg:pt-2">
-          <div className="lg:sticky lg:top-24">{toc}</div>
+        {/* right: same-subject notes + meta */}
+        <div className="hidden lg:block">
+          <div className="sticky top-24 space-y-8">
+            {relatedNotes}
+            {marginalia}
+          </div>
         </div>
       </div>
     </div>

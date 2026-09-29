@@ -35,8 +35,7 @@ export default function Home() {
               className="mt-8 max-w-md text-sm leading-relaxed md:ml-[2vw]"
               style={{ color: 'var(--ink-soft)' }}
             >
-              本学期四门课的学习笔记汇总：数学物理方程、实变函数与泛函分析、微分几何、运筹学。
-              会持续更新，欢迎补充与纠错——直接群里喊我。
+              本学期四门课的学习笔记与作业答案汇总：数学物理方程、实变函数与泛函分析、微分几何、运筹学。 会持续更新，欢迎补充与纠错。
             </p>
           </Reveal>
         </div>
@@ -99,7 +98,7 @@ export default function Home() {
 
         {/* footer */}
         <footer className="mt-14 flex flex-col items-start justify-between gap-3 text-xs md:flex-row md:items-center" style={{ color: 'var(--ink-faint)' }}>
-          <span>© 2026 届数学笔记共享 · 仅供本班同学学习使用</span>
+          <span>© 2026 A2U4F</span>
           <span className="uppercase tracking-[0.3em]">Ink on paper, math in mind.</span>
         </footer>
       </div>
