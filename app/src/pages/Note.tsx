@@ -1,10 +1,13 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
+import remarkGfm from 'remark-gfm'
 import rehypeKatex from 'rehype-katex'
-import { getNote, getSubject, getNotesBySubject } from '../data/notes'
+import { getNote, getSubject, notes, subjects } from '../data/notes'
 import { Reveal } from '../components/Reveal'
+
+const GITHUB_URL = 'https://github.com/A2U4F/MathNoteRepository'
 
 function slugify(text: string) {
   return text
@@ -18,19 +21,28 @@ export default function Note() {
   const note = getNote(noteId)
   const subject = note ? getSubject(note.subjectId) : undefined
   const [tocOpen, setTocOpen] = useState(false)
+  const [content, setContent] = useState<string | null>(null)
+
+  // 正文按需加载：切到哪篇才拉取哪篇的 markdown chunk
+  useEffect(() => {
+    if (!note) return
+    let alive = true
+    setContent(null)
+    note.content().then((md) => {
+      if (alive) setContent(md)
+    })
+    return () => {
+      alive = false
+    }
+  }, [note])
 
   const headings = useMemo(() => {
-    if (!note) return []
-    return note.content
+    if (!content) return []
+    return content
       .split('\n')
       .filter((l) => l.startsWith('## '))
       .map((l) => l.replace(/^## /, '').trim())
-  }, [note])
-
-  const related = useMemo(() => {
-    if (!note) return []
-    return getNotesBySubject(note.subjectId).filter((n) => n.id !== note.id)
-  }, [note])
+  }, [content])
 
   if (!note || !subject) {
     return (
@@ -69,52 +81,60 @@ export default function Note() {
     </nav>
   )
 
-  const marginalia = (
-    <aside aria-label="笔记信息" className="space-y-8">
-      <div>
-        <p className="mb-3 text-xs font-bold uppercase tracking-[0.3em]" style={{ color: 'var(--ink-faint)' }}>
-          信息
-        </p>
-        <dl className="space-y-2 text-sm" style={{ color: 'var(--ink-soft)' }}>
-          <div className="flex justify-between gap-3 border-b pb-2" style={{ borderColor: 'var(--line)' }}>
-            <dt>科目</dt>
-            <dd className="text-right font-medium" style={{ color: 'var(--ink)' }}>{subject.name}</dd>
-          </div>
-          <div className="flex justify-between gap-3 border-b pb-2" style={{ borderColor: 'var(--line)' }}>
-            <dt>更新</dt>
-            <dd className="tabular-nums">{note.date}</dd>
-          </div>
-          <div className="flex justify-between gap-3 border-b pb-2" style={{ borderColor: 'var(--line)' }}>
-            <dt>标签</dt>
-            <dd className="text-right">{note.tags.join(' · ')}</dd>
-          </div>
-        </dl>
-      </div>
-    </aside>
-  )
-
-  const relatedNotes = related.length > 0 && (
-    <div>
-      <p className="mb-3 text-xs font-bold uppercase tracking-[0.3em]" style={{ color: 'var(--ink-faint)' }}>
-        同科目笔记
+  // 右侧栏：全站笔记按科目分组列出，正在读的一篇高亮
+  const allNotes = (
+    <nav aria-label="全部笔记">
+      <p className="mb-4 text-xs font-bold uppercase tracking-[0.3em]" style={{ color: 'var(--ink-faint)' }}>
+        全部笔记
       </p>
-      <ul className="space-y-3">
-        {related.map((r) => (
-          <li key={r.id}>
-            <Link
-              to={`/note/${r.id}`}
-              className="group block text-sm leading-snug"
-              style={{ color: 'var(--ink-soft)' }}
-            >
-              <span className="font-display font-bold transition-colors group-hover:text-[#8c2f39]" style={{ color: 'var(--ink)' }}>
-                {r.title}
-              </span>
-              <span className="mt-0.5 block text-xs tabular-nums">{r.date}</span>
-            </Link>
-          </li>
+      <div className="space-y-6">
+        {subjects.map((s) => (
+          <div key={s.id}>
+            <p className="mb-2 text-[10px] font-bold tracking-[0.25em]" style={{ color: 'var(--ink-faint)' }}>
+              {s.no} {s.name}
+            </p>
+            <ul>
+              {notes
+                .filter((n) => n.subjectId === s.id)
+                .map((n) => {
+                  const active = n.id === note.id
+                  return (
+                    <li key={n.id}>
+                      {active ? (
+                        <span
+                          className="block border-l-2 py-1 pl-3 text-sm leading-snug"
+                          style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
+                        >
+                          <span className="font-display font-bold">{n.title}</span>
+                          <span className="mt-0.5 block text-xs tabular-nums" style={{ color: 'var(--ink-faint)' }}>
+                            {n.date}
+                          </span>
+                        </span>
+                      ) : (
+                        <Link
+                          to={`/note/${n.id}`}
+                          className="group block border-l-2 border-transparent py-1 pl-3 text-sm leading-snug transition-colors"
+                          style={{ color: 'var(--ink-soft)' }}
+                        >
+                          <span
+                            className="font-display font-bold transition-colors group-hover:text-[#8c2f39]"
+                            style={{ color: 'var(--ink)' }}
+                          >
+                            {n.title}
+                          </span>
+                          <span className="mt-0.5 block text-xs tabular-nums" style={{ color: 'var(--ink-faint)' }}>
+                            {n.date}
+                          </span>
+                        </Link>
+                      )}
+                    </li>
+                  )
+                })}
+            </ul>
+          </div>
         ))}
-      </ul>
-    </div>
+      </div>
+    </nav>
   )
 
   return (
@@ -188,46 +208,54 @@ export default function Note() {
 
           <Reveal delay={120} className="mt-4">
             <div className="article-body">
-              <ReactMarkdown
-                remarkPlugins={[remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-                components={{
-                  h2: ({ children }: { children?: ReactNode }) => {
-                    const text = String(children ?? '')
-                    const idx = headings.indexOf(text)
-                    return (
-                      <h2 id={slugify(text)}>
-                        {idx >= 0 && <span className="h2-index">§ {String(idx + 1).padStart(2, '0')}</span>}
-                        {children}
-                      </h2>
-                    )
-                  },
-                }}
-              >
-                {note.content}
-              </ReactMarkdown>
+              {content === null ? (
+                <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>
+                  载入中……
+                </p>
+              ) : (
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath, remarkGfm]}
+                  rehypePlugins={[rehypeKatex]}
+                  components={{
+                    h2: ({ children }: { children?: ReactNode }) => {
+                      const text = String(children ?? '')
+                      const idx = headings.indexOf(text)
+                      return (
+                        <h2 id={slugify(text)}>
+                          {idx >= 0 && <span className="h2-index">§ {String(idx + 1).padStart(2, '0')}</span>}
+                          {children}
+                        </h2>
+                      )
+                    },
+                  }}
+                >
+                  {content}
+                </ReactMarkdown>
+              )}
             </div>
           </Reveal>
 
           <footer className="mt-16 border-t pt-6 text-xs" style={{ borderColor: 'var(--line-strong)', color: 'var(--ink-faint)' }}>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span>如发现错漏，群里直接 @我 改。</span>
-              <Link to={`/subject/${subject.id}`} className="underline underline-offset-4 hover:text-[#8c2f39]">
-                更多{subject.name}笔记 →
-              </Link>
+              <span>欢迎补充、纠错与催更</span>
+              <a
+                href={GITHUB_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-4 transition-colors hover:text-[#8c2f39]"
+              >
+                在 GitHub 上查看源码 →
+              </a>
             </div>
           </footer>
 
-          {/* mobile only: same-subject notes below the article */}
-          <div className="mt-12 lg:hidden">{relatedNotes}</div>
+          {/* mobile only: all notes below the article */}
+          <div className="mt-12 lg:hidden">{allNotes}</div>
         </article>
 
-        {/* right: same-subject notes + meta */}
+        {/* right: all notes */}
         <div className="hidden lg:block">
-          <div className="sticky top-24 space-y-8">
-            {relatedNotes}
-            {marginalia}
-          </div>
+          <div className="sticky top-24">{allNotes}</div>
         </div>
       </div>
     </div>

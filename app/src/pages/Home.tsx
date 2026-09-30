@@ -35,7 +35,7 @@ export default function Home() {
               className="mt-8 max-w-md text-sm leading-relaxed md:ml-[2vw]"
               style={{ color: 'var(--ink-soft)' }}
             >
-              本学期四门课的学习笔记与作业答案汇总：数学物理方程、实变函数与泛函分析、微分几何、运筹学。 会持续更新，欢迎补充与纠错。
+              本学期四门课的学习笔记与作业答案汇总：数学物理方程、实变函数与泛函分析、微分几何、运筹学。 会持续更新，欢迎补充、纠错与催更。
             </p>
           </Reveal>
         </div>
