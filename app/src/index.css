@@ -173,12 +173,16 @@
   margin: 2em 0;
 }
 /* 数学公式：构建期已由 notes-md.ts 渲染成 MathJax SVG（字形为路径，自包含）。
-   容器只负责横向滚动；绝不加 overflow-y: hidden——会削掉积分号等高出行的字形。 */
+   容器负责居中与横向滚动；绝不加 overflow-y: hidden——会削掉积分号等高出行的字形。 */
 .article-body .math-display {
   margin: 1.5em 0;
+  text-align: center;
   overflow-x: auto;
 }
 .article-body .math-display svg {
+  /* Tailwind preflight 把 svg 设成 display:block，text-align 不起作用，用 auto 边距居中 */
+  display: block;
+  margin: 0 auto;
   max-width: none;
 }
 .article-body .math-inline svg {
