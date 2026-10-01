@@ -1,100 +1,31 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import ReactMarkdown from 'react-markdown'
-import remarkMath from 'remark-math'
-import remarkGfm from 'remark-gfm'
-import rehypeKatex from 'rehype-katex'
-import {
-  BookOpen, Bug, CircleAlert, CircleCheck, HelpCircle, Info, ListChecks,
-  Lightbulb, OctagonAlert, Quote, TriangleAlert, type LucideIcon,
-} from 'lucide-react'
 import { getNote, getSubject, notes, subjects } from '../data/notes'
-import remarkCallout from '../lib/remark-callout'
 import { Reveal } from '../components/Reveal'
 
 const GITHUB_URL = 'https://github.com/A2U4F/MathNoteRepository'
-
-// callout 色板：低饱和、同一明度档，压在纸面上不抢正文。
-// 颜色以 "R, G, B" 三元组传递，与 .obsidian/snippets/mathnote-site.css 的 callout 段一致。
-const CALLOUT_META: Record<string, { c: string; icon: LucideIcon; title: string }> = {
-  note: { c: '55, 89, 129', icon: Info, title: '注记' },
-  info: { c: '55, 89, 129', icon: Info, title: '说明' },
-  todo: { c: '55, 89, 129', icon: ListChecks, title: '待办' },
-  abstract: { c: '61, 108, 113', icon: ListChecks, title: '摘要' },
-  summary: { c: '61, 108, 113', icon: ListChecks, title: '摘要' },
-  tldr: { c: '61, 108, 113', icon: ListChecks, title: '摘要' },
-  tip: { c: '57, 111, 98', icon: Lightbulb, title: '提示' },
-  hint: { c: '57, 111, 98', icon: Lightbulb, title: '提示' },
-  success: { c: '57, 111, 98', icon: CircleCheck, title: '完成' },
-  check: { c: '57, 111, 98', icon: CircleCheck, title: '完成' },
-  done: { c: '57, 111, 98', icon: CircleCheck, title: '完成' },
-  question: { c: '103, 81, 133', icon: HelpCircle, title: '问题' },
-  help: { c: '103, 81, 133', icon: HelpCircle, title: '问题' },
-  faq: { c: '103, 81, 133', icon: HelpCircle, title: '问题' },
-  warning: { c: '151, 112, 53', icon: TriangleAlert, title: '注意' },
-  caution: { c: '151, 112, 53', icon: TriangleAlert, title: '注意' },
-  attention: { c: '151, 112, 53', icon: TriangleAlert, title: '注意' },
-  important: { c: '128, 66, 102', icon: CircleAlert, title: '重要' },
-  danger: { c: '140, 47, 57', icon: OctagonAlert, title: '危险' },
-  error: { c: '140, 47, 57', icon: OctagonAlert, title: '错误' },
-  failure: { c: '140, 47, 57', icon: OctagonAlert, title: '失败' },
-  bug: { c: '140, 47, 57', icon: Bug, title: '缺陷' },
-  example: { c: '138, 90, 56', icon: BookOpen, title: '例' },
-  quote: { c: '110, 104, 88', icon: Quote, title: '引文' },
-  cite: { c: '110, 104, 88', icon: Quote, title: '引文' },
-}
-
-function Callout({ node, children }: { node?: any; children?: ReactNode }) {
-  const type: string | undefined = node?.properties?.calloutType
-  if (!type) return <blockquote>{children}</blockquote>
-  const meta = CALLOUT_META[type] ?? CALLOUT_META.note
-  const Icon = meta.icon
-  const title = (node?.properties?.calloutTitle as string) || meta.title
-  return (
-    <aside className="callout" style={{ '--callout-c': meta.c } as CSSProperties}>
-      <p className="callout-title">
-        <Icon size={14} strokeWidth={2.2} aria-hidden />
-        {title}
-      </p>
-      <div className="callout-body">{children}</div>
-    </aside>
-  )
-}
-
-function slugify(text: string) {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/[^\w一-龥]+/g, '-')
-}
 
 export default function Note() {
   const { noteId = '' } = useParams()
   const note = getNote(noteId)
   const subject = note ? getSubject(note.subjectId) : undefined
   const [tocOpen, setTocOpen] = useState(false)
-  const [content, setContent] = useState<string | null>(null)
+  const [doc, setDoc] = useState<{ html: string; headings: string[] } | null>(null)
 
-  // 正文按需加载：切到哪篇才拉取哪篇的 markdown chunk
+  // 正文按需加载：切到哪篇才拉取哪篇的（构建期已渲染好的）HTML chunk
   useEffect(() => {
     if (!note) return
     let alive = true
-    setContent(null)
-    note.content().then((md) => {
-      if (alive) setContent(md)
+    setDoc(null)
+    note.content().then((d) => {
+      if (alive) setDoc(d)
     })
     return () => {
       alive = false
     }
   }, [note])
 
-  const headings = useMemo(() => {
-    if (!content) return []
-    return content
-      .split('\n')
-      .filter((l) => l.startsWith('## '))
-      .map((l) => l.replace(/^## /, '').trim())
-  }, [content])
+  const headings = doc?.headings ?? []
 
   if (!note || !subject) {
     return (
@@ -117,7 +48,7 @@ export default function Note() {
             <button
               onClick={() => {
                 setTocOpen(false)
-                document.getElementById(slugify(h))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                document.getElementById(h.trim().toLowerCase().replace(/[^\w一-龥]+/g, '-'))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }}
               className="block w-full min-h-[36px] content-center border-l py-1 pl-3 text-left text-sm leading-snug transition-colors hover:border-[#8c2f39] hover:text-[#8c2f39]"
               style={{ borderColor: 'var(--line)', color: 'var(--ink-soft)' }}
@@ -259,33 +190,16 @@ export default function Note() {
           </Reveal>
 
           <Reveal delay={120} className="mt-4">
-            <div className="article-body">
-              {content === null ? (
+            {doc === null ? (
+              <div className="article-body">
                 <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>
                   载入中……
                 </p>
-              ) : (
-                <ReactMarkdown
-                  remarkPlugins={[remarkCallout, remarkMath, remarkGfm]}
-                  rehypePlugins={[rehypeKatex]}
-                  components={{
-                    blockquote: Callout,
-                    h2: ({ children }: { children?: ReactNode }) => {
-                      const text = String(children ?? '')
-                      const idx = headings.indexOf(text)
-                      return (
-                        <h2 id={slugify(text)}>
-                          {idx >= 0 && <span className="h2-index">§ {String(idx + 1).padStart(2, '0')}</span>}
-                          {children}
-                        </h2>
-                      )
-                    },
-                  }}
-                >
-                  {content}
-                </ReactMarkdown>
-              )}
-            </div>
+              </div>
+            ) : (
+              // 正文是构建期渲染好的 HTML（含 KaTeX / callout / § 编号），直接注入
+              <div className="article-body" dangerouslySetInnerHTML={{ __html: doc.html }} />
+            )}
           </Reveal>
 
           <footer className="mt-16 border-t pt-6 text-xs" style={{ borderColor: 'var(--line-strong)', color: 'var(--ink-faint)' }}>

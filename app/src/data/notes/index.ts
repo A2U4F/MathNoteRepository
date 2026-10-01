@@ -7,6 +7,12 @@ export interface Subject {
   blurb: string
 }
 
+/** 一篇笔记构建期渲染好的正文（HTML 已含 KaTeX 与 § 编号） */
+export interface NoteBody {
+  html: string
+  headings: string[]
+}
+
 export interface Note {
   id: string
   subjectId: string
@@ -15,7 +21,7 @@ export interface Note {
   summary: string
   tags: string[]
   /** 正文懒加载：每篇是独立 chunk，进入笔记页时才拉取对应的 .md */
-  content: () => Promise<string>
+  content: () => Promise<NoteBody>
 }
 
 export const subjects: Subject[] = [
@@ -49,12 +55,12 @@ export const subjects: Subject[] = [
   },
 ]
 
-// 每篇笔记的正文在 ./md/<id>.md；import.meta.glob 把它们编译成
-// 一个个懒加载函数，Vite 构建时各自切成独立 chunk，首页不用背全部正文。
+// 每篇笔记的正文在 ./md/<id>.md；构建期由 vite 插件（notes-md.ts）渲染成 HTML，
+// import.meta.glob 把它们编译成一个个懒加载函数，各自切成独立 chunk。
 const loaders = import.meta.glob('./md/*.md', {
-  query: '?raw',
+  query: '?html',
   import: 'default',
-}) as Record<string, () => Promise<string>>
+}) as Record<string, () => Promise<NoteBody>>
 
 const metas: Omit<Note, 'content'>[] = [
   {
