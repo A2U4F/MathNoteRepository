@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap');
-@import 'katex/dist/katex.min.css';
 
 @tailwind base;
 @tailwind components;
@@ -173,14 +172,18 @@
   border-top: 1px solid var(--line);
   margin: 2em 0;
 }
-.article-body .katex-display {
+/* 数学公式：构建期已由 notes-md.ts 渲染成 MathJax SVG（字形为路径，自包含）。
+   容器只负责横向滚动；绝不加 overflow-y: hidden——会削掉积分号等高出行的字形。 */
+.article-body .math-display {
   margin: 1.5em 0;
   overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0.2em 0;
 }
-.article-body .katex {
-  font-size: 1.06em;
+.article-body .math-display svg {
+  max-width: none;
+}
+.article-body .math-inline svg {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* callouts：Obsidian 的 > [!type] 语法（remarkCallout 剥标记，Callout 组件渲染）。

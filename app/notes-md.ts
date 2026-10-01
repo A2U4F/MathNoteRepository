@@ -22,10 +22,37 @@ import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import remarkRehype from 'remark-rehype'
-import rehypeKatex from 'rehype-katex'
-import rehypeStringify from 'rehype-stringify'
+import rehypeStringify, { type Options as StringifyOptions } from 'rehype-stringify'
 import type { Element, ElementContent, Root, RootContent } from 'hast'
 import type { Plugin as VitePlugin } from 'vite'
+
+/* ---------------- 数学公式：构建期 MathJax → SVG ----------------
+ * 选 SVG 而不是 KaTeX(HTML+CSS) 的原因：KaTeX 的 HTML 类名与 CSS 版本强耦合
+ * （本项目曾因 rehype-katex 内嵌 katex@0.16 出 HTML、顶层 katex@0.18 出 CSS，
+ *  导致分数不缩放、∉/≠ 的斜杠覆盖层错位）。SVG 把字形烙成路径，自包含，
+ *  不依赖任何客户端 CSS/字体，客户端也不用再背 katex.min.css 和 30 个字体文件。 */
+import { mathjax } from 'mathjax-full/js/mathjax.js'
+import { liteAdaptor } from 'mathjax-full/js/adaptors/liteAdaptor.js'
+import { RegisterHTMLHandler } from 'mathjax-full/js/handlers/html.js'
+import { TeX } from 'mathjax-full/js/input/tex.js'
+import { AllPackages } from 'mathjax-full/js/input/tex/AllPackages.js'
+import { SVG } from 'mathjax-full/js/output/svg.js'
+
+const mjAdaptor = liteAdaptor()
+RegisterHTMLHandler(mjAdaptor)
+const mjDocument = mathjax.document('', {
+  InputJax: new TeX({ packages: AllPackages }),
+  OutputJax: new SVG({ fontCache: 'local' }),
+})
+
+function texToSvg(tex: string, display: boolean): string {
+  try {
+    const container = mjDocument.convert(tex.trim(), { display })
+    return mjAdaptor.innerHTML(container)
+  } catch (e) {
+    throw new Error(`MathJax 渲染失败（${display ? 'display' : 'inline'}）：${tex.slice(0, 80)} —— ${e instanceof Error ? e.message : String(e)}`)
+  }
+}
 
 /** callout 色板：低饱和、同一明度档，压在纸面上不抢正文。
  *  颜色以 "R, G, B" 三元组传给 --callout-c，与 index.css 及
@@ -212,6 +239,37 @@ function numberH2(children: RootContent[], headings: string[]): void {
   }
 }
 
+/** remark-rehype 把 $…$/$$…$$ 变成 <span class="math math-inline">TeX</span>（display 同理），
+ *  这里把它们替换成渲染好的 MathJax SVG。 */
+function isMathNode(el: Element, display: boolean): boolean {
+  const cls = el.properties?.className
+  return Array.isArray(cls) && cls.includes('math-' + (display ? 'display' : 'inline'))
+}
+
+function renderMathNodes(children: RootContent[]): void {
+  for (let i = 0; i < children.length; i++) {
+    const node = children[i]
+    if (!isElement(node)) continue
+    if (isMathNode(node, false)) {
+      children[i] = {
+        type: 'element',
+        tagName: 'span',
+        properties: { className: ['math-inline'] },
+        children: [{ type: 'raw', value: texToSvg(textOf(node), false) }],
+      }
+    } else if (isMathNode(node, true)) {
+      children[i] = {
+        type: 'element',
+        tagName: 'div',
+        properties: { className: ['math-display'] },
+        children: [{ type: 'raw', value: texToSvg(textOf(node), true) }],
+      }
+    } else {
+      renderMathNodes(node.children)
+    }
+  }
+}
+
 export interface NoteBody {
   html: string
   headings: string[]
@@ -226,12 +284,12 @@ export async function renderMarkdown(md: string): Promise<NoteBody> {
     .use(remarkRehype)
     .use(() => async (tree: unknown) => {
       const root = tree as Root
+      renderMathNodes(root.children)
       transformCallouts(root.children)
       numberH2(root.children, headings)
     })
-    .use(rehypeKatex)
     // callout 标题里的内联 SVG（我们自己生成的 lucide 图标）要以原样输出
-    .use(rehypeStringify, { allowDangerousHtml: true })
+    .use(rehypeStringify, { allowDangerousHtml: true } as StringifyOptions)
 
   const file = await processor.process(translateWikiLinks(md))
   return { html: String(file), headings }
