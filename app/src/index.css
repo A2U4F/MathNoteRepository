@@ -182,3 +182,33 @@
 .article-body .katex {
   font-size: 1.06em;
 }
+
+/* callouts：Obsidian 的 > [!type] 语法（remarkCallout 剥标记，Callout 组件渲染）。
+   色板在 Note.tsx 的 CALLOUT_META，以 "R, G, B" 传入 --callout-c；
+   与 .obsidian/snippets/mathnote-site.css 的 callout 段保持一致。 */
+.article-body .callout {
+  margin: 1.4em 0;
+  padding: 0.85em 1.2em;
+  border-left: 2px solid rgb(var(--callout-c, 140, 47, 57));
+  background: rgba(var(--callout-c, 140, 47, 57), 0.07);
+}
+.article-body .callout-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0 0 0.3em;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgb(var(--callout-c, 140, 47, 57));
+}
+.article-body .callout-title svg {
+  flex: none;
+}
+.article-body .callout-body > p:first-child {
+  margin-top: 0;
+}
+.article-body .callout-body > p:last-child {
+  margin-bottom: 0;
+}
